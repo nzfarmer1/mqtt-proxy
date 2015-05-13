@@ -4,7 +4,7 @@ This project aims to solve the problem of matching individual clients to specifi
 
 Usage
 
-node mqtt-proxy <port> <map>
+node mqtt-proxy &lt;port&gt; &lt;map>&gt;
 
 i.e.
 
