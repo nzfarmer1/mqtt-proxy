@@ -40,10 +40,8 @@ new mqtt.Server(function(client) {
       self.clients[c].emit('close');
     }
     process.exit();
-});
+  });
 
-
-  
   client.on('connect', function(packet) {
     client.id = packet.clientId;
     console.log("CONNECT: client id: " + client.id);
@@ -68,6 +66,7 @@ new mqtt.Server(function(client) {
     options.qos = packet.qos;
     options.protocolVersion = packet.protocolVersion;
     options.protocolId = packet.protocolId;
+  
     self.proxies[client.id] = mqtt.connect(options);
     self.clients[packet.clientId] = client;
 
