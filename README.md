@@ -13,6 +13,7 @@ node mqtt-proxy 1883 map.json
 Map format
 
 Edit map.json to create an array of maps.  Example file below:
+</p>
 <code>
 [{"username": "*",  "clientId": "*", "host": "localhost", "port": "1883"}]
 </code>
@@ -28,5 +29,5 @@ This is a relatively green project with debugging enabled; without a set of test
 Please feel free to fork and improve.
 
 <i>
-Andrew McClure, Director AgSense -  Bringing I.o.T to NZ Agriculture
+Andrew McClure, Director <a href="http://agsense.co.nz">AgSense</a> -  Bringing I.o.T to NZ Agriculture
 </i>
