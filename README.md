@@ -31,3 +31,6 @@ Please feel free to fork and improve.
 <i>
 Andrew McClure, Director <a href="http://agsense.co.nz">AgSense</a> -  Bringing I.o.T to NZ Agriculture
 </i>
+
+<b><a href="https://payment.swipehq.com/?product_id=EB82DA1340C7E">Koha (Donation)</a> - If you like our work and would like to make a small donation to help us continue</b>
+
