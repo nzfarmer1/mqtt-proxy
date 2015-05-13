@@ -3,8 +3,8 @@ var mqtt = require('mqtt')
 
 
 function refreshMap(){
-    //Replace with an on HUP and build reg exs
-    return  require(__dirname + '/map.json');
+    // Replace with an on HUP signal and rebuild with reg ex?
+    return  require(__dirname + '/' + process.argv[3] ||  'map.json');
 }
 
 function getMap(packet){
@@ -45,7 +45,7 @@ new mqtt.Server(function(client) {
 
   
   client.on('connect', function(packet) {
-    console.log(packet)
+//   console.log(packet)
     client.id = packet.clientId;
     console.log("CONNECT: client id: " + client.id);
     client.subscriptions = [];
@@ -79,37 +79,30 @@ new mqtt.Server(function(client) {
         client.connack({returnCode:0});
      });
 
-    proxy.on('connack',function(_packet){
-        console.log('Connack ' + packet)
-        client.connack({returnCode: _packet.returnCode});
-     });
-
     proxy.on('suback',function(_packet){
-     console.log('proxy suback');
-     console.log(_packet);
+     console.log('Proxy suback');
     	client.suback({messageId: _packet.messageId, granted: _packet.qos});
-	});
-    proxy.on('message',function(topic,payload,qos){
-   	console.log(topic);
-    var c = client;
+    });
 
-      for (var i = 0; i < c.subscriptions.length; i++) {
+    proxy.on('message',function(topic,payload,qos){
+ 
+    var c = client;
+    for (var i = 0; i < c.subscriptions.length; i++) {
         var s = c.subscriptions[i];
         if (s.test(topic)) {
-        
           c.publish({topic: topic, payload: payload});
           break;
         }
       }
-	});
+    });
 
- 
-   proxy.on('puback',function(_packet){
-    	client.puback(_packet) 
-	});
+    // Not sure if we need these ... 
+    proxy.on('puback',function(_packet){
+        client.puback(_packet) 
+    });
 
     proxy.on('pubrel', function (_packet) {
-    	 client.pubrel(_packet);
+        client.pubrel(_packet);
     });
 
     proxy.on('pubrec', function (_packet) {
@@ -125,27 +118,23 @@ new mqtt.Server(function(client) {
       });
     });
     
+    
     proxy.on('disconnect',function(rc){
-      console.log('proxy disconnect');
+      console.log('Proxy disconnect');
      });
 
     proxy.on('close',function(e){
-      console.log('proxy close' + (e != 'undefined') ? e:"");
-      
-      client.connack({returnCode:1}); // Add error codes (convert to ints i.e. ECONNREFUSED )
+      console.log('Proxy close ' + (e != 'undefined') ? e:"");
+      client.connack({returnCode:1}); // Todo: Add error codes - i.e. convert ECONNREFUSED to 1 )
     	 client.stream.end();
       delete self.clients[packet.clientId];
      	delete self.clients[client.id];
     })
 
     proxy.on('error', function(e) {
-       	console.log(e);
+       	console.log('Proxy error ' + (e === 'undefined')?'':e);
         client.error(e);
     });
-
-
-    console.log('Proxy handlers established')
-   
   });
 
   client.on('subscribe', function(packet) {
@@ -163,9 +152,7 @@ new mqtt.Server(function(client) {
       if (client.id in self.proxies)
           self.proxies[client.id].subscribe(topic,qos);
     }
-
   });
-
 
   client.on('publish', function(packet) {
     console.log("PUBLISH(%s): %j", client.id, packet);
@@ -186,14 +173,14 @@ new mqtt.Server(function(client) {
   });
 
   client.on('close', function(packet) {
-    console.log("close event!")
+    console.log("Close event")
     if (client.id in self.proxies)
         self.proxies[client.id].end();
   });
 
   client.on('error', function(e) {
     client.stream.end();
-    console.log(e);
+    console.log((e == 'undefined') ? 'error':e);
   });
-}).listen(process.argv[2] || 1884);
+}).listen(process.argv[2] || 1883);
 
