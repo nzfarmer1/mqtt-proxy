@@ -3,7 +3,7 @@
     "description": "MQTT Proxy with map based lookup table",
     "version": "0.0.1",
     "dependencies": {
-        "mqtt": "~2.7.1"
+        "mqtt": "~1.1.4"
     },
     "keywords": [ "mqtt","proxy" ],
     "contributors": [
