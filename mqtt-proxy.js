@@ -45,7 +45,6 @@ new mqtt.Server(function(client) {
 
   
   client.on('connect', function(packet) {
-//   console.log(packet)
     client.id = packet.clientId;
     console.log("CONNECT: client id: " + client.id);
     client.subscriptions = [];
@@ -80,8 +79,8 @@ new mqtt.Server(function(client) {
      });
 
     proxy.on('suback',function(_packet){
-     console.log('Proxy suback');
-    	client.suback({messageId: _packet.messageId, granted: _packet.qos});
+        console.log('Proxy suback');
+        client.suback({messageId: _packet.messageId, granted: _packet.qos});
     });
 
     proxy.on('message',function(topic,payload,qos){
@@ -90,8 +89,8 @@ new mqtt.Server(function(client) {
     for (var i = 0; i < c.subscriptions.length; i++) {
         var s = c.subscriptions[i];
         if (s.test(topic)) {
-          c.publish({topic: topic, payload: payload});
-          break;
+            c.publish({topic: topic, payload: payload});
+            break;
         }
       }
     });
@@ -126,14 +125,14 @@ new mqtt.Server(function(client) {
     proxy.on('close',function(e){
       console.log('Proxy close ' + (e != 'undefined') ? e:"");
       client.connack({returnCode:1}); // Todo: Add error codes - i.e. convert ECONNREFUSED to 1 )
-    	 client.stream.end();
+      client.stream.end();
       delete self.clients[packet.clientId];
-     	delete self.clients[client.id];
+      delete self.clients[client.id];
     })
 
     proxy.on('error', function(e) {
-       	console.log('Proxy error ' + (e === 'undefined')?'':e);
-        client.error(e);
+      console.log('Proxy error ' + (e === 'undefined')?'':e);
+      client.error(e);
     });
   });
 
