@@ -66,9 +66,19 @@ new mqtt.Server(function(client) {
     options.qos = packet.qos;
     options.protocolVersion = packet.protocolVersion;
     options.protocolId = packet.protocolId;
+
+    if (client.id in self.proxies){
+	self.clients[client.id].end();
+	self.proxies[client.id].end();
+	delete self.clients[client.id];
+	delete self.clients[client.id];
+        client.connack({returnCode:1});
+	console.log("cleaning up old connection");
+	return;
+	}
   
     self.proxies[client.id] = mqtt.connect(options);
-    self.clients[packet.clientId] = client;
+    self.clients[client.id] = client;
 
     var proxy = self.proxies[client.id]
 
@@ -124,9 +134,9 @@ new mqtt.Server(function(client) {
     proxy.on('close',function(e){
       console.log('Proxy close ' + (e != 'undefined') ? e:"");
       client.connack({returnCode:1}); // Todo: Add error codes - i.e. convert ECONNREFUSED to 1 )
-      client.stream.end();
-      delete self.clients[packet.clientId];
+      client.end();
       delete self.clients[client.id];
+      delete self.proxies[client.id];
     })
 
     proxy.on('error', function(e) {

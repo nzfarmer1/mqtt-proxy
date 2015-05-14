@@ -1,26 +1,32 @@
 {
-    "name": "mqtt-proxy",
-    "description": "MQTT Proxy with map based lookup table",
-    "version": "0.0.1",
-    "dependencies": {
-        "mqtt": "~1.1.4"
-    },
-    "keywords": [ "mqtt","proxy" ],
-    "contributors": [
-        {
-            "name": "Andrew McClure",
-            "email": "andrew@agsense.co.nz",
-            "url": "http://agsense.co.nz"
-        }
-    ],
-    "maintainers": [
-        {
-            "name": "Andrew McClure",
-            "email": "andrew@agsense.co.nz"
-        }
-    ],
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/nzfarmer1/mqtt-proxy"
-    }
+  "name": "mqtt-proxy",
+  "description": "MQTT Proxy with map based lookup table",
+  "version": "0.0.2",
+  "dependencies": {
+    "mqtt": "~1.1.4"
+  },
+  "keywords": [
+    "mqtt",
+    "proxy"
+  ],
+  "contributors": [
+    "Andrew McClure <andrew@agsense.co.nz> (http://agsense.co.nz)"
+  ],
+  "maintainers": [
+    "Andrew McClure <andrew@agsense.co.nz>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nzfarmer1/mqtt-proxy"
+  },
+  "bugs": {
+    "url": "https://github.com/nzfarmer1/mqtt-proxy/issues"
+  },
+  "homepage": "https://github.com/nzfarmer1/mqtt-proxy",
+  "main": "mqtt-proxy.js",
+  "scripts": {
+    "test": "node mqtt-proxy 1883 map.json"
+  },
+  "author": "Andrew McClure",
+  "license": "MIT"
 }
