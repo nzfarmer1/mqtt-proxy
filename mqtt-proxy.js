@@ -1,6 +1,51 @@
-var mqtt = require('mqtt')
-  , util = require('util');
+/*
+
+This script attempts to be a crude generic MQTT proxy.
+
+It should be considered alpha quality and not production ready
+
+Many use cases not properly implemented/tested.
+
+Please report any issues here: https://github.com/nzfarmer1/mqtt-proxy/issues
+
+Author: Andrew McClure (AgSense NZ)
+
+MQTT Client Connect Error codes from:
+http://www.eclipse.org/paho/files/mqttdoc/Cclient/_m_q_t_t_client_8h.html
+
+1: Connection refused: Unacceptable protocol version
+2: Connection refused: Identifier rejected
+3: Connection refused: Server unavailable
+4: Connection refused: Bad user name or password
+5: Connection refused: Not authorized
+6-255: Reserved for future use
+*/
   
+
+var mqtt = require('mqtt')
+  , util = require('util')
+  , path = require('path');  
+
+var script = path.basename(process.argv[1]);
+
+if (process.argv.length  < 4){
+    console.log("Usage: node %s [<host>:]<port>  <mapfile>",script)
+    process.exit(-1);
+}
+
+var connect = process.argv[2] || "1883"
+,host = 'localhost'
+,port;
+
+if (connect.indexOf(':') !=-1){
+    host = connect.split(':')[0];
+    port = connect.split(':')[1];
+} else {
+    port = connect;
+}
+    
+
+console.log("%s: %s %s:%s (Use Cntl-c to exit)",script,"Listening on",host,port)
 
 
 function refreshMap(){
@@ -29,7 +74,7 @@ function getMap(client){
 }
 
 
-new mqtt.Server(function(client) {
+var server = new mqtt.Server(function(client) {
   var self = this;
 
   if (!self.proxies) self.proxies = {};
@@ -51,7 +96,6 @@ new mqtt.Server(function(client) {
     
     client.timestamp = client.now();
     client.id = packet.clientId +'-' + client.timestamp;
-    console.log("CONNECT: client id: " + client.id);
     client.subscriptions = [];
 
     var options ={}
@@ -62,10 +106,13 @@ new mqtt.Server(function(client) {
     }
 
     var map = getMap(packet)
-    if (!map){
+    if (!map ){
+        console.log('WARNING: Failed to find map for: (%s) ',packet.clientId);
         client.connack({returnCode:3});
         return;
     }
+
+    console.log("CONNECT: client id: " + client.id);
 
     options.port = map.port;
     options.host = map.host;
@@ -77,36 +124,68 @@ new mqtt.Server(function(client) {
     options.protocolVersion = packet.protocolVersion;
     options.protocolId = packet.protocolId;
     
-  
     self.proxies[client.id] = mqtt.connect(options);
     self.clients[client.id] = client;
 
+    var rc = 0;
     var proxy = self.proxies[client.id]
+    var stream = self.proxies[client.id].stream
+
+    stream.on('connect',function(){
+        console.log('Proxy stream connect' )
+     });
+
+    stream.on('error',function(e){
+        console.log('Proxy stream error' )
+        console.log(e);
+        
+        // for some reason client.connack fails here
+        // so we store rc globally and it gets
+        // returned on close
+        
+        switch(e.code){
+            case 'ECONNREFUSED':
+                rc =3;
+                // Todo: Add mores codes
+            default: 
+                rc =3;
+        }
+     });
+
+    stream.on('close',function(e){
+      client.connack({returnCode:rc});
+      client.end();
+      this.end();
+      delete self.proxies[client.id];
+      delete self.clients[client.id];
+    });
 
     proxy.on('connect',function(){
         console.log('Proxy connect')
-        client.connack({returnCode:0});
+        client.connack({returnCode:rc});
      });
 
-    proxy.on('suback',function(_packet){
-        console.log('Proxy suback');
-        client.suback({messageId: _packet.messageId, granted: _packet.qos});
+    proxy.on('error',function(e){
+        //Check for Auth errors!
+        console.log('Proxy: '  + e);
+        
+        if (e.toString().indexOf('Not authorized')){
+            rc = 5;
+        } // Todo: Add more checks.  
+        proxy.end();
     });
+
 
     proxy.on('message',function(topic,payload,qos){
         var delta  = Math.round(1/1000*(client.now() - client.timestamp));
-        //console.log("Proxy on message (%s) ",client.keepalive - delta); 
         // ping requests are not proxied
         // so if client has gone away, close connections
         if (client.keepalive - delta < 0 ){
             console.log('Keep alive timeout on client');
             client.emit('close');
             return;
-        } else {
-            client.timestamp = client.now();
-	}
-            
-            
+        }
+	
         var c = client;
         for (var i = 0; i < c.subscriptions.length; i++) {
             var s = c.subscriptions[i];
@@ -144,20 +223,6 @@ new mqtt.Server(function(client) {
       console.log('Proxy disconnect');
      });
 
-    proxy.on('close',function(e){
-      console.log('Proxy close ' + (e != 'undefined') ? e:"");
-      client.connack({returnCode:1}); // Todo: Add error codes - i.e. convert ECONNREFUSED to 1 )
-      client.end();
-      this.end();
-      delete self.proxies[client.id];
-      delete self.clients[client.id];
-    })
-
-    proxy.on('error', function(e) {
-      console.log('Proxy error ' + (e === 'undefined')?'':e);
-      client.error(e);
-    });
-
   });
 
   
@@ -192,13 +257,13 @@ new mqtt.Server(function(client) {
   });
 
   client.on('disconnect', function(packet) {
-    console.log("Got disconnect")
     if (client.id in self.proxies)
         self.proxies[client.id].end();
   });
 
+  
   client.on('close', function(packet) {
-    console.log("Close event")
+    console.log("Client: close (%s)",packet)
     if (client.id in self.proxies)
         self.proxies[client.id].end();
     client.end();
@@ -211,9 +276,11 @@ new mqtt.Server(function(client) {
     client.stream.end();
     delete self.proxies[client.id];
     delete self.clients[client.id];
-    console.log('Client error ' + (e === 'undefined') ? '':e);
+    console.log('Client error: (%s)', (e === 'undefined') ? '':e);
   });
   
-  
-}).listen(process.argv[2] || 1883);
+}).listen(port,host);
 
+server.on('error',function(e){
+   console.log(script +  ": %s", e);
+});

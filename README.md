@@ -4,11 +4,11 @@ This project aims to solve the problem of matching individual clients to specifi
 
 Usage:
 
-node mqtt-proxy &lt;port&gt; &lt;map&gt;
+node mqtt-proxy &lt;[host:]port&gt; &lt;map&gt;
 
 i.e.
 
-node mqtt-proxy 1883 map.json
+node mqtt-proxy localhost:1883 map.json
 
 Map format:
 

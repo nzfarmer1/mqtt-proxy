@@ -1,9 +1,11 @@
 {
   "name": "mqtt-proxy",
   "description": "MQTT Proxy with map based lookup table",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "dependencies": {
-    "mqtt": "~1.1.4"
+    "mqtt": "~1.1.4",
+    "util": "~0.10.3",
+    "path": "~0.11.14"
   },
   "keywords": [
     "mqtt",
@@ -28,5 +30,6 @@
     "test": "node mqtt-proxy 1883 map.json"
   },
   "author": "Andrew McClure",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {}
 }
