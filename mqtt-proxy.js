@@ -43,8 +43,14 @@ new mqtt.Server(function(client) {
     process.exit();
   });
 
+  client.now = function(){
+    return (new Date()).valueOf();
+  };
+  
   client.on('connect', function(packet) {
-    client.id = packet.clientId +'-' + (new Date()).valueOf();
+    
+    client.timestamp = client.now();
+    client.id = packet.clientId +'-' + client.timestamp;
     console.log("CONNECT: client id: " + client.id);
     client.subscriptions = [];
 
@@ -65,20 +71,12 @@ new mqtt.Server(function(client) {
     options.host = map.host;
     options.clean = packet.clean;
     options.keepalive = packet.keepalive;
+    client.keepalive = packet.keepalive;
     options.dup = packet.dup;
     options.qos = packet.qos;
     options.protocolVersion = packet.protocolVersion;
     options.protocolId = packet.protocolId;
-
-    if (client.id in self.proxies){
-        console.log("cleaning up old connection");
-        self.clients[client.id].end();
-        self.proxies[client.id].end();
-        delete self.clients[client.id];
-        delete self.clients[client.id];
-               client.connack({returnCode:1});
-        return;
-    }
+    
   
     self.proxies[client.id] = mqtt.connect(options);
     self.clients[client.id] = client;
@@ -96,15 +94,27 @@ new mqtt.Server(function(client) {
     });
 
     proxy.on('message',function(topic,payload,qos){
- 
-    var c = client;
-    for (var i = 0; i < c.subscriptions.length; i++) {
-        var s = c.subscriptions[i];
-        if (s.test(topic)) {
-            c.publish({topic: topic, payload: payload});
-            break;
+        var delta  = Math.round(1/1000*(client.now() - client.timestamp));
+        //console.log("Proxy on message (%s) ",client.keepalive - delta); 
+        // ping requests are not proxied
+        // so if client has gone away, close connections
+        if (client.keepalive - delta < 0 ){
+            console.log('Keep alive timeout on client');
+            client.emit('close');
+            return;
+        } else {
+            client.timestamp = client.now();
+	}
+            
+            
+        var c = client;
+        for (var i = 0; i < c.subscriptions.length; i++) {
+            var s = c.subscriptions[i];
+            if (s.test(topic)) {
+                c.publish({topic: topic, payload: payload});
+                break;
+            }
         }
-      }
     });
 
     // Not sure if we need these ... 
@@ -138,16 +148,19 @@ new mqtt.Server(function(client) {
       console.log('Proxy close ' + (e != 'undefined') ? e:"");
       client.connack({returnCode:1}); // Todo: Add error codes - i.e. convert ECONNREFUSED to 1 )
       client.end();
-      delete self.clients[client.id];
+      this.end();
       delete self.proxies[client.id];
+      delete self.clients[client.id];
     })
 
     proxy.on('error', function(e) {
       console.log('Proxy error ' + (e === 'undefined')?'':e);
       client.error(e);
     });
+
   });
 
+  
   client.on('subscribe', function(packet) {
     var granted = [];
 
@@ -174,6 +187,7 @@ new mqtt.Server(function(client) {
   client.on('pingreq', function(packet) {
     console.log('PINGREQ(%s)', client.id);
     if (client.id in self.proxies && self.proxies[client.id].connected)
+       client.timestamp = (new Date()).valueOf();
        client.pingresp();
   });
 
@@ -187,11 +201,19 @@ new mqtt.Server(function(client) {
     console.log("Close event")
     if (client.id in self.proxies)
         self.proxies[client.id].end();
+    client.end();
+    delete self.proxies[client.id];
+    delete self.clients[client.id];
   });
+
 
   client.on('error', function(e) {
     client.stream.end();
-    console.log((e == 'undefined') ? 'error':e);
+    delete self.proxies[client.id];
+    delete self.clients[client.id];
+    console.log('Client error ' + (e === 'undefined') ? '':e);
   });
+  
+  
 }).listen(process.argv[2] || 1883);
 
