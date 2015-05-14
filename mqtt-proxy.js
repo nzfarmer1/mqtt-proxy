@@ -1,5 +1,6 @@
 var mqtt = require('mqtt')
   , util = require('util');
+  
 
 
 function refreshMap(){
@@ -7,7 +8,7 @@ function refreshMap(){
     return  require(__dirname + '/' + process.argv[3] ||  'map.json');
 }
 
-function getMap(packet){
+function getMap(client){
  var maps = refreshMap();
  var map;
 
@@ -18,8 +19,8 @@ function getMap(packet){
  }
 
  for (i in maps){
-    if (this.test(maps[i].username,packet.username) &&
-        this.test(maps[i].clientId,packet.clientId)){
+    if (this.test(maps[i].username,client.username) &&
+        this.test(maps[i].clientId,client.clientId)){
         map = i; // find first match
         break;
     }
@@ -43,24 +44,26 @@ new mqtt.Server(function(client) {
   });
 
   client.on('connect', function(packet) {
-    client.id = packet.clientId;
+    client.id = packet.clientId +'-' + (new Date()).valueOf();
     console.log("CONNECT: client id: " + client.id);
     client.subscriptions = [];
 
     var options ={}
+    options.clientId = client.id;
+    if ('username' in packet){
+        options.username = packet.username;
+        options.password = packet.password;
+    }
+
     var map = getMap(packet)
     if (!map){
         client.connack({returnCode:3});
         return;
     }
+
     options.port = map.port;
     options.host = map.host;
-    if ('username' in packet){
-        options.username = packet.username;
-        options.password = packet.password;
-    }
-    options.clientId = packet.clientId;
-    options.clean = packet.clientId;
+    options.clean = packet.clean;
     options.keepalive = packet.keepalive;
     options.dup = packet.dup;
     options.qos = packet.qos;
@@ -68,14 +71,14 @@ new mqtt.Server(function(client) {
     options.protocolId = packet.protocolId;
 
     if (client.id in self.proxies){
-	self.clients[client.id].end();
-	self.proxies[client.id].end();
-	delete self.clients[client.id];
-	delete self.clients[client.id];
-        client.connack({returnCode:1});
-	console.log("cleaning up old connection");
-	return;
-	}
+        console.log("cleaning up old connection");
+        self.clients[client.id].end();
+        self.proxies[client.id].end();
+        delete self.clients[client.id];
+        delete self.clients[client.id];
+               client.connack({returnCode:1});
+        return;
+    }
   
     self.proxies[client.id] = mqtt.connect(options);
     self.clients[client.id] = client;
