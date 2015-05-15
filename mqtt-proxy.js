@@ -168,10 +168,10 @@ var server = new mqtt.Server(function(client) {
     proxy.on('error',function(e){
         //Check for Auth errors!
         console.log('Proxy: '  + e);
-        
+        rc = 1
         if (e.toString().indexOf('Not authorized')){
             rc = 5;
-        } // Todo: Add more checks.  
+        }  // Todo: Add more checks.  
         proxy.end();
     });
 
